@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Brad Bitt, mais le Kart — base 01</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="scene">
+  <!-- Le cadre est dimensionné par le script pour rester en 16:9. Tout ce qui
+       doit se superposer au jeu (HUD, menus, boutons tactiles) vit dedans :
+       ça évite d'avoir à recalculer une position pour chaque élément. -->
+  <div id="cadre">
+
+    <!-- 320x180 en interne, agrandi par CSS. C'est la définition d'un Mode 7
+         de console 16 bits : le rendu du sol se fait pixel par pixel en JS,
+         et à cette taille on tient les 60 images par seconde même sur un
+         téléphone d'entrée de gamme. -->
+    <canvas id="jeu" width="320" height="180"></canvas>
+
+    <!-- ---------- HUD de course ---------- -->
+    <div id="hud" hidden>
+      <div class="hud-hg">
+        <div id="hud-place"><b>1</b><sup>er</sup></div>
+        <div id="hud-tour">TOUR 1/3</div>
+      </div>
+      <div class="hud-hd">
+        <div id="hud-objet" class="boite-objet"><canvas width="32" height="32"></canvas></div>
+        <div id="hud-chrono">0:00.00</div>
+      </div>
+      <div id="hud-vitesse"><span id="hud-kmh">0</span><small>km/h</small></div>
+      <div id="hud-annonce"></div>
+      <ol id="hud-classement"></ol>
+    </div>
+
+    <!-- ---------- Écrans ---------- -->
+    <div id="ecran">
+
+      <!-- Titre -->
+      <section data-ecran="titre" class="plein">
+        <div class="studios">
+          <span>IMAGINe Studio</span><i>×</i><span>HwR Engine</span>
+        </div>
+        <h1 class="logo">Brad&nbsp;Bitt<em>mais le Kart</em></h1>
+        <button class="gros" data-action="demarrer">Appuyer pour commencer</button>
+        <p class="note">Le son ne peut démarrer qu'après un clic. C'est le navigateur qui l'exige, pas nous.</p>
+      </section>
+
+      <!-- Menu principal -->
+      <section data-ecran="menu" class="plein" hidden>
+        <h2>Menu</h2>
+        <nav class="liste" id="menu-liste"></nav>
+        <p class="note">↑ ↓ pour choisir · Entrée pour valider · Échap pour revenir</p>
+      </section>
+
+      <!-- Choix de la coupe -->
+      <section data-ecran="coupes" class="plein" hidden>
+        <h2 id="coupes-titre">Grand Prix</h2>
+        <div class="grille" id="coupes-grille"></div>
+        <p class="note" id="coupes-detail"></p>
+      </section>
+
+      <!-- Choix du circuit (course unique / contre-la-montre) -->
+      <section data-ecran="circuits" class="plein" hidden>
+        <h2>Circuit</h2>
+        <div class="grille" id="circuits-grille"></div>
+        <p class="note" id="circuits-detail"></p>
+      </section>
+
+      <!-- Choix du pilote -->
+      <section data-ecran="pilotes" class="plein" hidden>
+        <h2>Pilote</h2>
+        <div class="pilotes" id="pilotes-grille"></div>
+        <div class="fiche" id="pilote-fiche"></div>
+      </section>
+
+      <!-- Cylindrée -->
+      <section data-ecran="cylindree" class="plein" hidden>
+        <h2>Cylindrée</h2>
+        <nav class="liste" id="cylindree-liste"></nav>
+        <p class="note">Reprend les trois difficultés de « Brad Bitt, mais le jeu ».</p>
+      </section>
+
+      <!-- Options -->
+      <section data-ecran="options" class="plein" hidden>
+        <h2>Options</h2>
+        <div class="options" id="options-corps"></div>
+        <p class="note">Tout est mémorisé dans ce navigateur.</p>
+      </section>
+
+      <!-- Crédits -->
+      <section data-ecran="credits" class="plein" hidden>
+        <h2>Crédits</h2>
+        <div class="texte">
+          <p><b>Brad Bitt, mais le Kart</b></p>
+          <p>Imaginé par IMAGINe Studio<br>Développé par HwR Engine</p>
+          <p class="note">Base technique — sortie visée 2027.</p>
+        </div>
+        <button class="gros" data-action="retour">Retour</button>
+      </section>
+
+      <!-- Pause -->
+      <section data-ecran="pause" class="plein voile" hidden>
+        <h2>Pause</h2>
+        <nav class="liste" id="pause-liste"></nav>
+      </section>
+
+      <!-- Résultats -->
+      <section data-ecran="resultats" class="plein voile" hidden>
+        <h2 id="resultats-titre">Arrivée</h2>
+        <ol class="tableau" id="resultats-tableau"></ol>
+        <nav class="liste" id="resultats-liste"></nav>
+      </section>
+
+    </div>
+
+    <!-- ---------- Commandes tactiles ---------- -->
+    <!-- Icônes SVG, pas des émojis : un émoji change de dessin d'un appareil à
+         l'autre et ne s'aligne jamais pareil. -->
+    <div id="tactile" hidden>
+      <div class="pad gauche">
+        <button class="tbtn" data-touche="gauche" aria-label="Tourner à gauche">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 L7 12 L15 20 Z"/></svg>
+        </button>
+        <button class="tbtn" data-touche="droite" aria-label="Tourner à droite">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 L17 12 L9 20 Z"/></svg>
+        </button>
+      </div>
+      <div class="pad droite">
+        <button class="tbtn frein" data-touche="frein" aria-label="Freiner">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>
+        </button>
+        <button class="tbtn objet" data-touche="objet" aria-label="Utiliser l'objet">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/></svg>
+        </button>
+        <button class="tbtn derive" data-touche="derive" aria-label="Déraper">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 17 C 9 17, 9 8, 14 8 L20 8" fill="none" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M17 5 L20 8 L17 11" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ---------- Demande de rotation ---------- -->
+    <div id="rotation" hidden>
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="21" y="6" width="22" height="38" rx="3" fill="none" stroke-width="3"/>
+        <path d="M14 50 a18 18 0 0 0 36 0" fill="none" stroke-width="3" stroke-linecap="round"/>
+        <path d="M50 50 l-5 -6 M50 50 l6 -4" fill="none" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <p>Tourne ton téléphone</p>
+      <span>Le Kart se joue en mode paysage.</span>
+    </div>
+
+  </div>
+</div>
+
+<button id="ouvrir-reglages" title="Réglages de développement (F1)">⚙ Réglages</button>
+
+<aside id="reglages" hidden>
+  <header>
+    <h1>Réglages</h1>
+    <button id="fermer-reglages" aria-label="Fermer">✕</button>
+  </header>
+  <p class="aide">Modifie les valeurs en course. Elles sont mémorisées dans ce navigateur.</p>
+  <div id="curseurs"></div>
+  <section class="actions">
+    <button id="reinit">Valeurs par défaut</button>
+    <button id="exporter">Copier le réglage</button>
+  </section>
+</aside>
+
+<!-- Scripts classiques, sans modules ES : la page reste ouvrable par simple
+     double-clic (file://), où les modules et fetch() sont bloqués. L'ordre
+     compte, chaque fichier s'appuyant sur ce que déclare le précédent. -->
+<script src="js/reglages.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/pilotes.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/objets.js"></script>
+
+<!-- piste.js déclare CIRCUITS : il passe donc AVANT les fichiers de circuits,
+     qui viennent s'y enregistrer. mode7.js suit, il lit une constante de
+     PISTE au chargement. -->
+<script src="js/piste.js"></script>
+<script src="js/mode7.js"></script>
+
+<!-- Les circuits : un fichier de données par circuit, comme les niveaux du jeu
+     principal. coupes.js ferme la marche, il les regroupe en coupes. -->
+<script src="circuits/tournesols.js"></script>
+<script src="circuits/ville-ete.js"></script>
+<script src="circuits/vallee.js"></script>
+<script src="circuits/disco.js"></script>
+<script src="circuits/ville-hiver.js"></script>
+<script src="circuits/manoir.js"></script>
+<script src="circuits/complexe.js"></script>
+<script src="circuits/largage.js"></script>
+<script src="circuits/coupes.js"></script>
+
+<script src="js/entrees.js"></script>
+<script src="js/course.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/jeu.js"></script>
+</body>
+</html>
